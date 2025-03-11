@@ -36,17 +36,10 @@ const char *fragmentShaderSource2 = "#version 330 core\n"
     "out vec4 FragColor;\n"
     "void main()\n"
     "{\n"
-    "   FragColor = vec4(0.0f, 0.5f, 0.5f, 1.0f);\n"
+    "   FragColor = vec4(0.0f, 0.5f, 0.7f, 1.0f);\n"
     "}\n\0";
 
-const char *fragmentShaderSource3 = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(0.0f, 0.5f, 1.0f, 0.5f);\n"
-    "}\n\0";
-
-float circleVertices[102];
+    
 float allCircleVertices[102 * 3];
 
 float* generateCircleVertices(float x, float y, float z, float radius, unsigned int numberOfSides){
@@ -54,7 +47,6 @@ float* generateCircleVertices(float x, float y, float z, float radius, unsigned 
     unsigned int numOfVertices = numberOfSides + 2;
     float doublePi = 2.0f * M_PI;
 
-    memset(circleVertices, 0, sizeof(float) * numberOfSides);
     memset(allCircleVertices, 0, sizeof(float) * numOfVertices * 3);
 
     float circleVertX[numOfVertices];
@@ -88,7 +80,10 @@ bool checkCollisionPaddle(float squareX, float squareY, float circleX, float cir
 
     glm::vec2 center(circleX + circleRadius, circleY + circleRadius);
     glm::vec2 aabb_half_extents(squareRadius, squareRadius);
-    glm::vec2 aabb_center(squareX + aabb_half_extents.x, squareY + aabb_half_extents.y);
+    glm::vec2 aabb_center(
+        squareX + aabb_half_extents.x,
+        squareY + aabb_half_extents.y
+    );
     glm::vec2 difference = center - aabb_center;
     glm::vec2 clamped = glm::clamp(difference, -aabb_half_extents, aabb_half_extents);
     glm::vec2 closest = aabb_center + clamped;
@@ -101,16 +96,24 @@ bool checkCollisionPaddle(float squareX, float squareY, float circleX, float cir
 
 bool checkCollisionTarget(Square targetSquare, float squareX, float squareY, float circleX, float circleY){
 
-    targetSquare.setIsActive(false);
-
-    float squareRadius = 0.5f;
     float circleRadius = 0.5f;
 
-    glm::vec2 center(circleX - circleRadius, circleY - circleRadius);
-    glm::vec2 aabb_half_extents(squareRadius, squareRadius);
-    glm::vec2 aabb_center(squareX - aabb_half_extents.x, squareY + aabb_half_extents.y);
+    glm::vec2 center(circleX + circleRadius, circleY + circleRadius);
+
+    // targetSquares have a width of 1.0f and height of 1.0f
+
+    float targetX = targetSquare.getX(); 
+    float targetY = targetSquare.getY();
+
+    glm::vec2 aabb_half_extents(0.5f, 0.5f);
+    glm::vec2 aabb_center(
+        targetX + aabb_half_extents.x, 
+        targetY + aabb_half_extents.y
+    );
+
     glm::vec2 difference = center - aabb_center;
     glm::vec2 clamped = glm::clamp(difference, -aabb_half_extents, aabb_half_extents);
+
     glm::vec2 closest = aabb_center + clamped;
 
     difference = closest - center;
@@ -178,10 +181,6 @@ int main()
     glShaderSource(fragmentShader2, 1, &fragmentShaderSource2, NULL);
     glCompileShader(fragmentShader2);
 
-    unsigned int fragmentShader3 = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader3, 1, &fragmentShaderSource3, NULL);
-    glCompileShader(fragmentShader3);
-
     // check for shader compile errors
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
     if (!success)
@@ -212,6 +211,7 @@ int main()
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader2);
 
+
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float vertices[] = {
@@ -239,11 +239,11 @@ int main()
     };
 
 
-    unsigned int VBO[4], VAO[4], EBO[4];
+    unsigned int VBO[4], VAO[4], EBO[1];
     
     glGenVertexArrays(4, VAO);
     glGenBuffers(4, VBO);
-    glGenBuffers(4, EBO);
+    glGenBuffers(1, EBO);
 
     // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
     glBindVertexArray(VAO[0]);
@@ -303,7 +303,7 @@ int main()
     float paddleY = 2.5f;
     float paddleVelocity = 0.035f;
 
-    float circleX = 0.0f;
+    float circleX = -2.0f;
     float circleY = 0.0;
     float circleVelocityX = 0.035f;
     float circleVelocityY = 0.035f;
@@ -323,6 +323,7 @@ int main()
         Square(3.65f, -0.9f, 0.0f, true), 
         Square(3.65f, -2.0f, 0.0f, true), 
     };
+
 
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(paddleX, paddleY, 0.0f));
@@ -380,7 +381,6 @@ int main()
         // ------
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
         
         if(glfwGetKey(window, GLFW_KEY_S ) == GLFW_PRESS){
             if(paddleY > -2.5f){
@@ -395,8 +395,11 @@ int main()
                 paddleY = paddleY + (1.0f * paddleVelocity);
             }   
         }
-    
+        
+
         // first triangle model, view, projection
+
+        glUseProgram(shaderProgram);
 
         unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
@@ -407,12 +410,13 @@ int main()
 
         // draw first triangle
         
-        glUseProgram(shaderProgram);
         glBindVertexArray(VAO[0]); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
 
         // second triangle model, view, projection
+
+        glUseProgram(shaderProgram2);
 
         unsigned int modelLoc2 = glGetUniformLocation(shaderProgram2, "model");
         glUniformMatrix4fv(modelLoc2, 1, GL_FALSE, glm::value_ptr(model));
@@ -422,7 +426,7 @@ int main()
         glUniformMatrix4fv(projectionLoc2, 1, GL_FALSE, glm::value_ptr(projection));
 
         // draw second triangle 
-        glUseProgram(shaderProgram2);
+
         glBindVertexArray(VAO[1]);
         glDrawArrays(GL_TRIANGLES, 0 ,3);
 
@@ -430,6 +434,8 @@ int main()
         // glBindVertexArray(0); // no need to unbind it every time 
 
         // circle model, view, projection
+
+        glUseProgram(shaderProgram2);
 
         unsigned int modelLoc3 = glGetUniformLocation(shaderProgram2, "model");
         glUniformMatrix4fv(modelLoc3, 1, GL_FALSE, glm::value_ptr(modelCircle));
@@ -440,7 +446,6 @@ int main()
 
         // draw circle 
 
-        glUseProgram(shaderProgram2);
         glBindVertexArray(VAO[2]);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 102);
 
@@ -448,16 +453,17 @@ int main()
 
         int targetCoordsLength = sizeof(targetCoords) / sizeof(targetCoords[0]);
         int modelCounter = 0;
+
+        glUseProgram(shaderProgram);
         
         for(int i = 0; i < targetCoordsLength; i++){  
             if(targetCoords[i].getActive() == true){
-                unsigned int modelTargetLoc = glGetUniformLocation(shaderProgram2, "model");
+                unsigned int modelTargetLoc = glGetUniformLocation(shaderProgram, "model");
                 glUniformMatrix4fv(modelTargetLoc, 1, GL_FALSE, glm::value_ptr(modelDict[modelCounter]));
-                unsigned int targetViewLoc = glGetUniformLocation(shaderProgram2, "view");
+                unsigned int targetViewLoc = glGetUniformLocation(shaderProgram, "view");
                 glUniformMatrix4fv(targetViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-                unsigned int targetProjectionLoc = glGetUniformLocation(shaderProgram2, "projection");
+                unsigned int targetProjectionLoc = glGetUniformLocation(shaderProgram, "projection");
                 glUniformMatrix4fv(targetProjectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-                glUseProgram(shaderProgram2);
                 glBindVertexArray(VAO[3]);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             }
@@ -513,8 +519,9 @@ int main()
 
         // check for collision with target
 
-        for(int i = 0; i < targetCoordsLength; i+=3){
-            if(checkCollisionTarget(targetCoords[i], targetCoords[i].getX(), targetCoords[i+1].getY(), circleX, circleY)){
+        for(int i = 0; i < targetCoordsLength; i++){
+            if(targetCoords[i].getActive() == true && checkCollisionTarget(targetCoords[i], targetCoords[i].getX(), targetCoords[i].getY(), circleX, circleY)){  
+                targetCoords[i].setIsActive(false);
                 modelCircle = glm::translate(modelCircle, glm::vec3(1.0f * -circleVelocityX, 1.0f * -circleVelocityY, 0.0f));
                 circleVelocityX = -circleVelocityX;
                 circleVelocityY = -circleVelocityY;
