@@ -13,6 +13,8 @@
 	   "-I${workspaceFolder}/dependencies/include",
 	   "-L${workspaceFolder}/dependencies/library",
 	   "${workspaceFolder}/dependencies/library/libglfw.3.4.dylib",
+	   "-I/opt/homebrew/Cellar/freetype/2.13.3/include/freetype2",
+	   "-L/opt/homebrew/lib",
 	   "${workspaceFolder}/*.cpp",
 	   "${workspaceFolder}/glad.c",
 	   "-o",
@@ -27,7 +29,8 @@
 	   "CoreVideo",
 	   "-framework",
 	   "CoreFoundation",
-	   "-Wno-deprecated"
+	   "-Wno-deprecated",
+	   "-lfreetype",
 	  ],
 	  "options": {
 	   "cwd": "${fileDirname}"
