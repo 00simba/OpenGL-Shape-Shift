@@ -18,31 +18,6 @@ void processInput(GLFWwindow *window);
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 int SCORE = 0;
-
-const char *vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "uniform mat4 model;\n"
-    "uniform mat4 view;\n"
-    "uniform mat4 projection;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = projection * view * model * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "}\0";
-
-const char *fragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.5f, 1.0f);\n"
-    "}\n\0";
-
-const char *fragmentShaderSource2 = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(0.0f, 0.5f, 0.7f, 1.0f);\n"
-    "}\n\0";
-
     
 float allCircleVertices[102 * 3];
 unsigned int VBO[5], VAO[5], EBO[1];
@@ -99,37 +74,6 @@ bool checkCollisionPaddle(float squareX, float squareY, float circleX, float cir
 
 }
 
-bool checkCollisionTarget(Square targetSquare, float squareX, float squareY, float circleX, float circleY){
-
-    float circleRadius = 0.5f;
-
-    glm::vec2 center(circleX + circleRadius, circleY + circleRadius);
-
-    // targetSquares have a width of 1.0f and height of 1.0f
-
-    float targetX = targetSquare.getX(); 
-    float targetY = targetSquare.getY();
-
-    glm::vec2 aabb_half_extents(0.5f, 0.5f);
-    glm::vec2 aabb_center(
-        targetX + aabb_half_extents.x, 
-        targetY + aabb_half_extents.y
-    );
-
-    glm::vec2 difference = center - aabb_center;
-    glm::vec2 clamped = glm::clamp(difference, -aabb_half_extents, aabb_half_extents);
-
-    glm::vec2 closest = aabb_center + clamped;
-
-    difference = closest - center;
-
-    if(glm::length(difference) < circleRadius){
-        SCORE += 1;
-    }
-
-    return glm::length(difference) < circleRadius;
-
-}
 
 void RenderText(Shader &shader, std::string text, float x, float y, float scale, glm::vec3 color)
     {
@@ -213,58 +157,6 @@ int main()
     // build and compile our shader program
     // ------------------------------------
     // vertex shader
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    // check for shader compile errors
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-    // fragment shader
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    unsigned int fragmentShader2 = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader2, 1, &fragmentShaderSource2, NULL);
-    glCompileShader(fragmentShader2);
-
-    // check for shader compile errors
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-    // link shaders
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    // check for linking errors
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    unsigned int shaderProgram2 = glCreateProgram();
-    glAttachShader(shaderProgram2, vertexShader);
-    glAttachShader(shaderProgram2, fragmentShader2);
-    glLinkProgram(shaderProgram2);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader2);
-
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -342,6 +234,9 @@ int main()
     // Compile and setup shader
 
     Shader shader("text.vs", "text.fs");
+    Shader shader1("shader.vs", "fragment1.fs");
+    Shader shader2("shader.vs", "fragment2.fs");
+
     glm::mat4 textProjection = glm::ortho(0.0f, static_cast<float>(SCR_WIDTH), 0.0f, static_cast<float>(SCR_HEIGHT));
     shader.use();
     glUniformMatrix4fv(glGetUniformLocation(shader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(textProjection));
@@ -541,13 +436,14 @@ int main()
 
         // first triangle model, view, projection
 
-        glUseProgram(shaderProgram);
+       // glUseProgram(shaderProgram);
+       shader1.use();
 
-        unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
+        unsigned int modelLoc = glGetUniformLocation(shader1.ID, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-        unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
+        unsigned int viewLoc = glGetUniformLocation(shader1.ID, "view");
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+        unsigned int projectionLoc = glGetUniformLocation(shader1.ID, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
         // draw first triangle
@@ -558,13 +454,14 @@ int main()
 
         // second triangle model, view, projection
 
-        glUseProgram(shaderProgram2);
+       // glUseProgram(shaderProgram2);
+       shader2.use();
 
-        unsigned int modelLoc2 = glGetUniformLocation(shaderProgram2, "model");
+        unsigned int modelLoc2 = glGetUniformLocation(shader2.ID, "model");
         glUniformMatrix4fv(modelLoc2, 1, GL_FALSE, glm::value_ptr(model));
-        unsigned int viewLoc2 = glGetUniformLocation(shaderProgram2, "view");
+        unsigned int viewLoc2 = glGetUniformLocation(shader2.ID, "view");
         glUniformMatrix4fv(viewLoc2, 1, GL_FALSE, glm::value_ptr(view));
-        unsigned int projectionLoc2 = glGetUniformLocation(shaderProgram2, "projection");
+        unsigned int projectionLoc2 = glGetUniformLocation(shader2.ID, "projection");
         glUniformMatrix4fv(projectionLoc2, 1, GL_FALSE, glm::value_ptr(projection));
 
         // draw second triangle 
@@ -577,13 +474,14 @@ int main()
 
         // circle model, view, projection
 
-        glUseProgram(shaderProgram2);
+        //glUseProgram(shaderProgram2);
+        shader2.use();
 
-        unsigned int modelLoc3 = glGetUniformLocation(shaderProgram2, "model");
+        unsigned int modelLoc3 = glGetUniformLocation(shader2.ID, "model");
         glUniformMatrix4fv(modelLoc3, 1, GL_FALSE, glm::value_ptr(modelCircle));
-        unsigned int viewLoc3 = glGetUniformLocation(shaderProgram2, "view");
+        unsigned int viewLoc3 = glGetUniformLocation(shader2.ID, "view");
         glUniformMatrix4fv(viewLoc3, 1, GL_FALSE, glm::value_ptr(view));
-        unsigned int projectionLoc3 = glGetUniformLocation(shaderProgram2, "projection");
+        unsigned int projectionLoc3 = glGetUniformLocation(shader2.ID, "projection");
         glUniformMatrix4fv(projectionLoc3, 1, GL_FALSE, glm::value_ptr(projection));
 
         // draw circle 
@@ -596,15 +494,16 @@ int main()
         int targetCoordsLength = sizeof(targetCoords) / sizeof(targetCoords[0]);
         int modelCounter = 0;
 
-        glUseProgram(shaderProgram);
+        //glUseProgram(shaderProgram);
+        shader1.use();
         
         for(int i = 0; i < targetCoordsLength; i++){  
             if(targetCoords[i].getActive() == true){
-                unsigned int modelTargetLoc = glGetUniformLocation(shaderProgram, "model");
+                unsigned int modelTargetLoc = glGetUniformLocation(shader1.ID, "model");
                 glUniformMatrix4fv(modelTargetLoc, 1, GL_FALSE, glm::value_ptr(modelDict[modelCounter]));
-                unsigned int targetViewLoc = glGetUniformLocation(shaderProgram, "view");
+                unsigned int targetViewLoc = glGetUniformLocation(shader1.ID, "view");
                 glUniformMatrix4fv(targetViewLoc, 1, GL_FALSE, glm::value_ptr(view));
-                unsigned int targetProjectionLoc = glGetUniformLocation(shaderProgram, "projection");
+                unsigned int targetProjectionLoc = glGetUniformLocation(shader1.ID, "projection");
                 glUniformMatrix4fv(targetProjectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
                 glBindVertexArray(VAO[3]);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -662,7 +561,8 @@ int main()
         // check for collision with target
 
         for(int i = 0; i < targetCoordsLength; i++){
-            if(targetCoords[i].getActive() == true && checkCollisionTarget(targetCoords[i], targetCoords[i].getX(), targetCoords[i].getY(), circleX, circleY)){  
+            Square currSquare = targetCoords[i];
+            if(targetCoords[i].getActive() == true && currSquare.checkCollisionTarget(targetCoords[i], targetCoords[i].getX(), targetCoords[i].getY(), circleX, circleY)){  
                 targetCoords[i].setIsActive(false);
                 modelCircle = glm::translate(modelCircle, glm::vec3(1.0f * -circleVelocityX, 1.0f * -circleVelocityY, 0.0f));
                 circleVelocityX = -circleVelocityX;
